@@ -1,15 +1,19 @@
-import random
-
 from src.idol import Idol
 
+def read_file_bytes(file_path):
+    with open(file_path, "rb") as file:
+        byte_list = []
+        byte = file.read(1)
+        while byte:
+            byte_list.append(byte)
+            byte = file.read(1)
+        return byte_list
+
 if (__name__ == "__main__"):
-    values = [ 62, 56, 26, 52, 99, 39, 74, 20 ]
+    data = []
     idol = Idol()
 
-    source = idol.compress(values).copy()
+    data = read_file_bytes("test/test.json")
+    source = idol.compress(data).copy()
     decompress = idol.decompress("compress.json")
 
-    if (source == decompress):
-        print("SUCCESS")
-    else:
-        print("FAIL")

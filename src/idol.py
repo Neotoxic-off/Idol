@@ -9,7 +9,7 @@ class Idol:
         self.packs = []
         self.file = "compress.json"
         self.packs_size = 3
-        self.locked = '\x42'
+        self.locked = 0x3773
         self.logger = Logger()
 
     def compress(self, _bytes):
@@ -45,14 +45,16 @@ class Idol:
     def __decompress_packs__(self):
         buffer = []
         raw = []
+        total = []
 
         for pack in self.packs:
             for index in pack["index"]:
                 raw.append(pack["bytes"])
                 for i, byte in enumerate(pack["bytes"]):
-                    buffer.insert((index + i) - len(pack["bytes"]), byte)
-        print(raw)
+                    buffer.insert((index + i) - (len(pack["bytes"]) - 1), byte)
+                    total.append(byte)
         self.bytes = buffer
+        self.logger.log(f"{len(total)} bytes decompressed")
 
         with open("decompress.bin", 'w') as f:
             f.write(str(self.bytes))
@@ -65,6 +67,7 @@ class Idol:
                 "bytes": pack.bytes,
                 "index": pack.index
             })
+
         with open("compress.json", 'w') as f:
             f.write(json.dumps(
                 {
@@ -79,19 +82,21 @@ class Idol:
         buffer = []
         hash_value = None
         pack = None
+        index = 0
 
+        self.logger.log(f"{len(self.bytes)} bytes to compress")
         if (len(self.bytes) >= self.packs_size):
-            for index, byte in enumerate(self.bytes):
-                if (len(buffer) == self.packs_size):
-                    pack = Pack(index, index, buffer.copy())
-                    if (self.__recorded__(pack, index) == False):
-                        self.logger.log("adding new pack")
-                        self.packs.append(
-                            pack
-                        )
-                    buffer.clear()
-                else:
-                    buffer.append(byte)
+            self.logger.log("recording packs")
+            while index < len(self.bytes):
+                buffer = [self.bytes[index], self.bytes[index + 1], self.bytes[index + 2]]
+                pack = Pack(index, index, buffer.copy())
+                if (self.__recorded__(pack, index) == False):
+                    self.packs.append(
+                        pack
+                    )
+                buffer.clear()
+                index += 3
+            self.logger.log(f"{len(self.packs)} packs")
 
     def __recorded__(self, pack: Pack, index: int):
         for i, recorded in enumerate(self.packs):
@@ -105,7 +110,7 @@ class Idol:
         padding = self.packs_size - mod
 
         if (mod != 0):
-            self.logger.log(f"{padding} align required")
+            self.logger.log(f"{padding} byte to align")
             for i in range(0, self.packs_size - mod):
                 self.bytes.append(self.locked)
             self.logger.log(f"bytes aligned")
