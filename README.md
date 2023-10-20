@@ -1,0 +1,2 @@
+# Idol
+🎩 Asymetrical compression algorithm
