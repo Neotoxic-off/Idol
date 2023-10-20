@@ -4,16 +4,58 @@ from src.models.pack import Pack
 from src.logger import Logger
 
 class Idol:
-    def __init__(self, _bytes: list):
-        self.bytes = _bytes
+    def __init__(self):
+        self.bytes = []
         self.packs = []
+        self.file = "compress.json"
         self.packs_size = 3
         self.locked = '\x42'
         self.logger = Logger()
 
+    def compress(self, _bytes):
+        self.bytes = _bytes
+
         self.__align__()
         self.__record__()
         self.__dump__()
+
+        return (self.bytes)
+
+    def decompress(self, _file):
+        self.file = _file
+        
+        self.bytes.clear()
+        self.packs.clear()
+
+        self.__load_compression__()
+        self.__decompress_packs__()
+        
+        return (self.bytes)
+
+    def __load_compression__(self):
+        data = None
+        self.logger.log("loading compression")
+
+        with open(self.file, 'r') as f:
+            data = json.loads(f.read())
+            self.packs = data["packs"]
+
+        self.logger.log(f"{len(self.packs)} packs loaded")
+
+    def __decompress_packs__(self):
+        buffer = []
+        raw = []
+
+        for pack in self.packs:
+            for index in pack["index"]:
+                raw.append(pack["bytes"])
+                for i, byte in enumerate(pack["bytes"]):
+                    buffer.insert((index + i) - len(pack["bytes"]), byte)
+        print(raw)
+        self.bytes = buffer
+
+        with open("decompress.bin", 'w') as f:
+            f.write(str(self.bytes))
 
     def __dump__(self):
         packs = []
@@ -26,35 +68,35 @@ class Idol:
         with open("compress.json", 'w') as f:
             f.write(json.dumps(
                 {
-                    "pack": packs
+                    "packs": packs
                 }
             ))
+
+        with open("compress.bin", 'w') as f:
+            f.write(str(self.bytes))
 
     def __record__(self):
         buffer = []
         hash_value = None
         pack = None
 
-        if (len(self.bytes) > self.packs_size):
+        if (len(self.bytes) >= self.packs_size):
             for index, byte in enumerate(self.bytes):
                 if (len(buffer) == self.packs_size):
-                    hash_value = hash(frozenset(buffer))
-                    pack = Pack(index, buffer)
+                    pack = Pack(index, index, buffer.copy())
                     if (self.__recorded__(pack, index) == False):
-                        self.logger.log(f"{hash_value} not recorded")
+                        self.logger.log("adding new pack")
                         self.packs.append(
                             pack
                         )
-                    else:
-                        self.logger.log(f"{hash_value} already recorded")
                     buffer.clear()
                 else:
                     buffer.append(byte)
-    
+
     def __recorded__(self, pack: Pack, index: int):
-        for index, recorded in enumerate(self.packs):
+        for i, recorded in enumerate(self.packs):
             if (recorded.bytes == pack.bytes):
-                self.packs[index].record(index)
+                self.packs[i].record(index)
                 return (True)
         return (False)
 

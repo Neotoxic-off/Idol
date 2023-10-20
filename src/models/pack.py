@@ -1,5 +1,6 @@
 class Pack:
-    def __init__(self, index, _bytes):
+    def __init__(self, _id, index, _bytes):
+        self.id = _id
         self.bytes = _bytes
         self.index = []
 
